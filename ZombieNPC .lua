@@ -1,232 +1,265 @@
--- Services
-local PathfindingService = game:GetService("PathfindingService") -- Grabs Roblox's PathfindingService to handle AI navigation.
-local RepStorage = game:GetService("ReplicatedStorage") -- Gets ReplicatedStorage to access shared assets like zombie templates.
 
--- ================================
+
+-- Services
+local PathfindingService = game:GetService("PathfindingService") 
+local RepStorage = game:GetService("ReplicatedStorage") 
+
 -- ZOMBIE TYPE CONFIGURATION
 -- ================================
--- Change this to "Heavy", "Light", or "Normal"
-local ZOMBIE_TYPE = "Heavy" -- Defines the type of zombie to spawn. I chose "Heavy" as a default for testing its tank-like behavior.
+-- We keep the current type in a single variable so this script can be reused for different zombie types.
+local ZOMBIE_TYPE = "Heavy" -- Default set to 'Heavy' for testing tanky behavior. You can change this to "Light" or "Normal" to reuse the same script with different stats.
 
--- Zombie type definitions
+-- Define stats for each zombie type
 local ZombieTypes = {
 	Heavy = {
-		Health = 150, -- High health for a tanky zombie that can take a beating.
-		WalkSpeed = 5, -- Slow speed to emphasize its bulkiness; fast zombies would feel less "heavy."
-		Damage = 25, -- High damage to make it threatening, matching its tough nature.
-		AttackCooldown = 1.5, -- Longer cooldown for balance, since high damage could be OP otherwise.
-		DisplayName = "Heavy Zombie" -- Clear name for players to identify this zombie type.
+		Health = 150, -- Heavy gets a lot of health. Chosen to make it a threat that soaks damage.
+		WalkSpeed = 5, -- Slow to move heavy/tanky feeling. Using a lower WalkSpeed emphasizes durability over mobility.
+		Damage = 25, -- High damage to make encounters with this type meaningful.
+		AttackCooldown = 1.5, -- Longer cooldown balances its high damage.
+		DisplayName = "Heavy Zombie"
 	},
 	Light = {
-		Health = 75, -- Low health since it’s a fast, fragile zombie.
-		WalkSpeed = 16, -- High speed to make it agile and hard to hit, fitting the "light" theme.
-		Damage = 6, -- Low damage to balance its speed; it’s more about overwhelming than raw power.
-		AttackCooldown = 0.6, -- Fast attacks to match its speedy nature, creating a swarm-like feel.
-		DisplayName = "Light Zombie" -- Descriptive name for clarity in-game.
+		Health = 75, -- Low health so they feel fragile and die quickly to encourage hit-and-run gameplay.
+		WalkSpeed = 16, -- Fast movement for swarm behavior; chosen to be clearly faster than player default speed.
+		Damage = 6, -- Low single-hit damage to balance speed.
+		AttackCooldown = 0.6, -- Fast attacks make them dangerous in groups.
+		DisplayName = "Light Zombie"
 	},
 	Normal = {
-		Health = 100, -- Balanced health for a standard zombie, a middle ground between Heavy and Light.
-		WalkSpeed = 10, -- Moderate speed to feel like a typical zombie, not too fast or slow.
-		Damage = 10, -- Moderate damage for a balanced threat level.
-		AttackCooldown = 1.0, -- Standard cooldown for a predictable attack pattern.
-		DisplayName = "Normal Zombie" -- Simple name to reflect its standard role.
+		Health = 100, -- Balanced baseline values give a predictable test subject.
+		WalkSpeed = 10,
+		Damage = 10,
+		AttackCooldown = 1.0,
+		DisplayName = "Normal Zombie"
 	}
 }
 
--- Get the current zombie's stats
-local currentStats = ZombieTypes[ZOMBIE_TYPE] -- Fetches the stats for the selected zombie type.
+-- Fetch stats for the chosen zombie type
+local currentStats = ZombieTypes[ZOMBIE_TYPE]
 if not currentStats then
-	warn("Invalid zombie type: " .. tostring(ZOMBIE_TYPE)) -- Warns if the ZOMBIE_TYPE is invalid (e.g., typo). Using warn() for debugging instead of error() to avoid stopping the script.
-	return -- Stops the script to prevent errors from missing stats.
+	-- We warn and return rather than error to make debugging less disruptive during development.
+	warn("Invalid zombie type: " .. tostring(ZOMBIE_TYPE))
+	return
 end
 
--- ================================
 -- Get zombie template from ReplicatedStorage
 -- ================================
 local templateNames = {
-	Heavy = "HeavyZombieTemplate", -- Maps zombie types to their template names in ReplicatedStorage.
+	Heavy = "HeavyZombieTemplate",
 	Normal = "NormalZombieTemplate",
 	Light = "LightZombieTemplate"
 }
 
-local templateName = templateNames[ZOMBIE_TYPE] -- Gets the template name for the current zombie type.
-local zombieTemplate = RepStorage:FindFirstChild(templateName) -- Looks for the template in ReplicatedStorage.
-
+local templateName = templateNames[ZOMBIE_TYPE]
+local zombieTemplate = RepStorage:FindFirstChild(templateName)
 if not zombieTemplate then
-	warn("Zombie template not found in ReplicatedStorage: " .. tostring(templateName)) -- Warns if the template is missing, likely a setup error in ReplicatedStorage.
-	return -- Exits to avoid proceeding without a valid template.
+	-- If template missing, warn and return.
+	warn("Zombie template not found: " .. tostring(templateName))
+	return
 end
 
--- ================================
 -- Grab zombie parts
 -- ================================
-local zombie = script.Parent -- Gets the zombie instance this script is attached to.
-local zombieTorso = zombie:FindFirstChild("Torso") or zombie:FindFirstChild("UpperTorso") or zombie:FindFirstChild("HumanoidRootPart") -- Checks for different torso names to support R6 and R15 rigs, with HumanoidRootPart as a fallback.
-local zombieHumanoid = zombie:FindFirstChild("Humanoid") -- Gets the zombie’s Humanoid for health, movement, and animations.
+local zombie = script.Parent -- Expect this script to be a child of the zombie model instance.
+-- We try multiple common torso names to support both R6 and R15 rigs and also HumanoidRootPart fallback.
+local zombieTorso = zombie:FindFirstChild("Torso") or zombie:FindFirstChild("UpperTorso") or zombie:FindFirstChild("HumanoidRootPart")
+local zombieHumanoid = zombie:FindFirstChild("Humanoid")
 
 if not zombieTorso or not zombieHumanoid then
-	warn("Zombie is missing parts (torso/humanoid), can't run AI.") -- Warns if critical parts are missing, which would break pathfinding or AI logic.
-	return -- Stops the script to prevent errors from missing components.
+	-- We require these to run the AI; otherwise the model isn't set up correctly.
+	warn("Zombie missing torso or humanoid, can't run AI.")
+	return
 end
 
--- Apply zombie type stats
-zombieHumanoid.MaxHealth = currentStats.Health -- Sets the zombie’s max health based on its type.
-zombieHumanoid.Health = currentStats.Health -- Initializes health to max to ensure the zombie starts at full strength.
-zombieHumanoid.WalkSpeed = currentStats.WalkSpeed -- Sets movement speed to match the zombie type’s stats.
-zombie.Name = currentStats.DisplayName -- Names the zombie instance for clarity in the game world.
-zombieHumanoid.DisplayName = currentStats.DisplayName -- Sets the in-game display name above the zombie’s head.
+-- Apply zombie stats
+-- Using MaxHealth then Health ensures health bars and damage events behave as expected.
+zombieHumanoid.MaxHealth = currentStats.Health
+zombieHumanoid.Health = currentStats.Health
+zombieHumanoid.WalkSpeed = currentStats.WalkSpeed -- Set walk speed on the humanoid so MoveTo and character animations use it.
+zombie.Name = currentStats.DisplayName -- Name the model for debugging in workspace. Useful when multiple zombie types spawn.
+zombieHumanoid.DisplayName = currentStats.DisplayName -- Shows a name above the humanoid (Roblox 2020+ feature).
 
--- Default stats (with safe indexing)
+-- Stats tracking with safe indexing
+-- We use a metatable to return 0 for undefined stats so we don't need to initialize every stat explicitly.
 local Stats = setmetatable({}, {
-	__index = function(t, k) return 0 end -- Uses a metatable to return 0 for any undefined stat, preventing nil errors when tracking stats.
+	__index = function(t, k) return 0 end -- If we read an undefined stat, treat it as 0 instead of nil (avoids errors when incrementing).
 })
 
--- Track time alive
-local spawnTime = tick() -- Records the time the zombie spawns to calculate its lifespan later.
+local spawnTime = tick() -- Record spawn time to calculate lifespan at death. Chosen because tick() is simple and sufficient.
 
--- ================================
+-- 
 -- AI helper functions
 -- ================================
 local function findTarget()
-	local agroDistance = 100 -- Sets the max distance to detect players; 100 studs feels like a good range for zombies to "notice" players.
-	local target = nil -- Initializes target as nil; we’ll update it if a valid player is found.
-	for _, player in ipairs(game.Players:GetPlayers()) do -- Loops through all players in the game.
-		if player.Character then -- Ensures the player has a character (they might be in a menu or disconnected).
-			local human = player.Character:FindFirstChild("Humanoid") -- Gets the player’s Humanoid to check health.
-			local torso = player.Character:FindFirstChild("Torso") or player.Character:FindFirstChild("UpperTorso") or player.Character:FindFirstChild("HumanoidRootPart") -- Supports R6/R15 rigs for player torso.
-			if human and torso and human.Health > 0 then -- Checks if the player is alive and has necessary parts.
-				local distance = (zombieTorso.Position - torso.Position).Magnitude -- Calculates distance between zombie and player.
-				if distance < agroDistance then -- If the player is closer than the current closest target...
-					agroDistance = distance -- Update the closest distance.
-					target = torso -- Set this player’s torso as the target for pathfinding.
+	-- Use a local agroDistance value that we reduce as we find closer players.
+	-- This pattern finds the closest valid player within the initial range.
+	local agroDistance = 100 -- 100 studs is a good default detection radius. You can tune this for balance.
+	local target = nil
+	-- Iterate all players; grabbing their character parts to compute distance.
+	for _, player in ipairs(game.Players:GetPlayers()) do
+		if player.Character then
+			local human = player.Character:FindFirstChild("Humanoid")
+			-- Try multiple torso parts to support different rigs.
+			local torso = player.Character:FindFirstChild("Torso") or player.Character:FindFirstChild("UpperTorso") or player.Character:FindFirstChild("HumanoidRootPart")
+			-- We only consider living players (health > 0)
+			if human and torso and human.Health > 0 then
+				local distance = (zombieTorso.Position - torso.Position).Magnitude
+				-- We pick the closest player within the current agroDistance.
+				if distance < agroDistance then
+					agroDistance = distance
+					target = torso -- Store the torso object for pathfinding.
 				end
 			end
 		end
 	end
-	return target -- Returns the closest player’s torso or nil if no valid target is found.
+	-- Returning the torso part keeps pathfinding code generic (works for both R6/R15).
+	return target
 end
 
 -- Damage variables
-local DAMAGE_AMOUNT = currentStats.Damage -- Stores the zombie’s damage value for quick access.
-local ATTACK_COOLDOWN = currentStats.AttackCooldown -- Stores the attack cooldown to control attack frequency.
-local lastAttackTime = 0 -- Tracks the last time the zombie attacked to enforce the cooldown.
+local DAMAGE_AMOUNT = currentStats.Damage
+local ATTACK_COOLDOWN = currentStats.AttackCooldown
+local lastAttackTime = 0 -- We track last attack time to implement cooldown without using delay or coroutines.
 
--- Damage handler
+-- onTouched handles melee-style damage when part is touched. This is a simple approach that works for close-range enemies.
 local function onTouched(hit)
-	local character = hit.Parent -- Gets the character that the zombie’s torso touched.
-	local humanoid = character:FindFirstChild("Humanoid") -- Checks if the touched object has a Humanoid (i.e., it’s a player or NPC).
-	if humanoid and game.Players:GetPlayerFromCharacter(character) then -- Ensures it’s a player, not an NPC or other object.
-		local currentTime = tick() -- Gets the current time to check if the attack cooldown has passed.
-		if currentTime - lastAttackTime >= ATTACK_COOLDOWN then -- Only attack if enough time has passed since the last attack.
-			lastAttackTime = currentTime -- Updates the last attack time.
+	local character = hit.Parent
+	if not character then return end -- Defensive: hit.Parent might be nil in some edge cases.
+	local humanoid = character:FindFirstChild("Humanoid")
+	-- Only damage players, not NPCs: check if the touched character belongs to a player.
+	if humanoid and game.Players:GetPlayerFromCharacter(character) then
+		local currentTime = tick()
+		if currentTime - lastAttackTime >= ATTACK_COOLDOWN then
+			lastAttackTime = currentTime -- update last attack time immediately to prevent rapid multi-hits on overlap
+			local healthBefore = humanoid.Health
+			-- Using TakeDamage is preferred over directly setting Health because it triggers damage events and respects Roblox's damage pipeline.
+			humanoid:TakeDamage(DAMAGE_AMOUNT)
 
-			local healthBefore = humanoid.Health -- Stores the player’s health before damage for kill detection.
-			humanoid:TakeDamage(DAMAGE_AMOUNT) -- Deals damage to the player based on zombie type.
+			-- Update tracked stats. Using the metatable ensures these increments work even if keys were never set.
+			Stats.HitsLanded = Stats.HitsLanded + 1
+			Stats.DamageDealt = Stats.DamageDealt + DAMAGE_AMOUNT
 
-			Stats.HitsLanded = Stats.HitsLanded + 1 -- Increments the hit counter for stat tracking.
-			Stats.DamageDealt = Stats.DamageDealt + DAMAGE_AMOUNT -- Adds to the total damage dealt by this zombie.
-
-			if humanoid.Health <= 0 and healthBefore > 0 then -- Checks if the player died from this hit.
-				Stats.Kills = Stats.Kills + 1 -- Increments kill count if the player was killed.
-				print(character.Name .. " got taken out by the zombie!") -- Logs the kill for debugging or feedback.
+			-- If this attack killed the player, increment Kills. healthBefore > 0 check ensures we only count actual kills from this hit.
+			if humanoid.Health <= 0 and healthBefore > 0 then
+				Stats.Kills = Stats.Kills + 1
+				print(character.Name .. " got taken out by the zombie!") -- Simple feedback for development; remove or route to logging in production.
 			end
 
-			print("Zombie hit " .. character.Name .. ". Damage so far: " .. Stats.DamageDealt) -- Logs the hit and total damage for debugging.
+			-- Debug print to monitor behavior during development. In production, consider replacing prints with proper logging or removing them.
+			print("Zombie hit " .. character.Name .. ". Damage so far: " .. Stats.DamageDealt)
 		end
 	end
 end
 
-zombieTorso.Touched:Connect(onTouched) -- Connects the onTouched function to the zombie’s torso to detect collisions with players.
+-- Connect the touch handler. We listen on the torso to approximate melee range.
+zombieTorso.Touched:Connect(onTouched)
 
--- ================================
+
 -- Death + Respawn
 -- ================================
 zombieHumanoid.Died:Connect(function()
-	Stats.Deaths = Stats.Deaths + 1 -- Increments the death counter for this zombie.
-	Stats.TimeAlive = tick() - spawnTime -- Calculates how long the zombie was alive.
+	-- Increment death stat and record time alive
+	Stats.Deaths = Stats.Deaths + 1
+	Stats.TimeAlive = tick() - spawnTime
 
-	-- Prints a summary of the zombie’s performance for debugging and analysis.
+	-- Log stats for debugging — helpful during tuning.
 	print("--- Zombie Stats ---")
-	print("Time Alive: " .. string.format("%.2f", Stats.TimeAlive) .. "s") -- Formats time to 2 decimal places for readability.
-	print("Kills: " .. Stats.Kills) -- Shows total kills.
-	print("Hits: " .. Stats.HitsLanded) -- Shows total hits landed.
-	print("Damage: " .. Stats.DamageDealt) -- Shows total damage dealt.
-	print("Chases: " .. Stats.ChasesStarted) -- Shows how many times the zombie chased a player.
-	print("Wanders: " .. Stats.TimesWandered) -- Shows how many times the zombie wandered randomly.
+	print("Time Alive: " .. string.format("%.2f", Stats.TimeAlive) .. "s")
+	print("Kills: " .. Stats.Kills)
+	print("Hits: " .. Stats.HitsLanded)
+	print("Damage: " .. Stats.DamageDealt)
+	print("Chases: " .. Stats.ChasesStarted)
+	print("Wanders: " .. Stats.TimesWandered)
 	print("--------------------")
 
-	task.wait(5) -- Waits 5 seconds before respawning to give players a brief break and avoid instant respawns.
-	local newZombie = zombieTemplate:Clone() -- Clones the zombie template from ReplicatedStorage to create a new instance.
-	newZombie.Name = currentStats.DisplayName -- Sets the new zombie’s name to match its type.
+	-- Delay before respawn; task.wait is preferred over wait() for more predictable behavior.
+	task.wait(5) -- 5 second respawn delay: chosen to give players a breather. Alternative: dynamic cooldown based on difficulty or number of players.
 
-	local hum = newZombie:FindFirstChild("Humanoid") -- Gets the new zombie’s Humanoid.
+	-- Clone a fresh zombie from the template and set it up similarly to the original.
+	local newZombie = zombieTemplate:Clone()
+	newZombie.Name = currentStats.DisplayName
+
+	local hum = newZombie:FindFirstChild("Humanoid")
 	if hum then
-		hum.DisplayName = currentStats.DisplayName -- Sets the display name for the new zombie.
+		hum.DisplayName = currentStats.DisplayName -- Keep the display name consistent on respawn.
 	end
 
-	local newTorso = newZombie:FindFirstChild("Torso") or newZombie:FindFirstChild("UpperTorso") or newZombie:FindFirstChild("HumanoidRootPart") -- Finds the new zombie’s torso, supporting R6/R15.
+	local newTorso = newZombie:FindFirstChild("Torso") or newZombie:FindFirstChild("UpperTorso") or newZombie:FindFirstChild("HumanoidRootPart")
 	if newTorso then
-		newTorso.CFrame = zombieTorso.CFrame -- Spawns the new zombie at the same position as the old one.
+		-- Place the new zombie at the same location as the old one. This keeps spawns predictable.
+		newTorso.CFrame = zombieTorso.CFrame
 	end
 
-	newZombie.Parent = workspace -- Places the new zombie in the game world.
-	local newScript = script:Clone() -- Clones this script to attach it to the new zombie.
-	newScript.Parent = newZombie -- Attaches the cloned script to the new zombie to run its AI.
+	newZombie.Parent = workspace -- Insert into the world so it becomes active.
+	local newScript = script:Clone() -- Clone this script into the new zombie so AI continues to run.
+	newScript.Parent = newZombie
 
-	zombie:Destroy() -- Removes the old zombie from the game to clean up.
+	zombie:Destroy() -- Remove the dead zombie model to avoid clutter.
 end)
 
--- ================================
 -- Movement (pathfinding + wandering)
 -- ================================
 local function pathfindTo(destination)
-	local path = PathfindingService:CreatePath() -- Creates a new path for the zombie to follow.
-	path:ComputeAsync(zombieTorso.Position, destination) -- Computes a path from the zombie’s position to the destination.
+	-- Create a path and compute a route from current position to destination.
+	local path = PathfindingService:CreatePath()
+	-- ComputeAsync is asynchronous internally but returns a Path object synchronously.
+	path:ComputeAsync(zombieTorso.Position, destination)
 
-	if path.Status == Enum.PathStatus.Success then -- Checks if a valid path was found.
-		local waypoints = path:GetWaypoints() -- Gets the waypoints of the path.
-		if #waypoints > 1 then -- Ensures there’s at least one waypoint to move to.
-			zombieHumanoid:MoveTo(waypoints[2].Position) -- Moves to the second waypoint (first is usually the starting point).
+	-- If the path succeeded, use the waypoints. Using waypoints makes the NPC avoid obstacles.
+	if path.Status == Enum.PathStatus.Success then
+		local waypoints = path:GetWaypoints()
+		-- Move to the second waypoint rather than the first because the first waypoint is often the current position.
+		if #waypoints > 1 then
+			zombieHumanoid:MoveTo(waypoints[2].Position)
 		else
-			zombieHumanoid:MoveTo(destination) -- Falls back to moving directly to the destination if waypoints are limited.
+			-- Fallback: if there are few waypoints, just MoveTo the destination directly.
+			zombieHumanoid:MoveTo(destination)
 		end
 	else
-		zombieHumanoid:MoveTo(destination) -- If pathfinding fails, move directly toward the destination as a fallback.
+		-- Pathfinding failed (maybe unreachable or blocked). Fallback to direct MoveTo which may go through obstacles.
+		zombieHumanoid:MoveTo(destination)
 	end
 end
 
--- Main loop
-local WANDER_RADIUS = 50 -- Sets the radius for random wandering; 50 studs gives a good spread without straying too far.
-local WANDER_INTERVAL = 3 -- Sets the interval between wander movements; 3 seconds feels natural for idle behavior.
-local lastWanderTime = 0 -- Tracks the last time the zombie wandered.
-local isChasing = false -- Tracks whether the zombie is chasing a player to toggle between chase and wander modes.
+-- Main loop parameters
+local WANDER_RADIUS = 50 -- Wander radius in studs. Tweak to control how far zombies roam from spawn.
+local WANDER_INTERVAL = 3 -- Seconds between wander attempts while idle. Shorter intervals make movement feel jittery; longer intervals feel static.
+local lastWanderTime = 0
+local isChasing = false
 
-while task.wait(0.05) do -- Runs every 0.05 seconds for smooth updates without overloading the server.
-	if not zombie.Parent or zombieHumanoid.Health <= 0 then -- Checks if the zombie still exists or is dead.
-		break -- Exits the loop if the zombie is invalid or dead.
+-- Main AI loop. We use a short wait to keep movement smooth without making the server do too much work.
+while task.wait(0.05) do -- 0.05s update gives ~20 updates/sec which balances responsiveness and CPU cost.
+	-- Defensive checks: stop if model removed or dead.
+	if not zombie.Parent or zombieHumanoid.Health <= 0 then
+		break
 	end
 
-	local targetTorso = findTarget() -- Looks for a player to chase.
-
-	if targetTorso then -- If a player is found within range...
-		if not isChasing then -- If the zombie wasn’t already chasing...
-			Stats.ChasesStarted = Stats.ChasesStarted + 1 -- Increments chase counter for stats.
-			isChasing = true -- Switches to chase mode.
+	local targetTorso = findTarget()
+	if targetTorso then
+		-- If we just started chasing, record that.
+		if not isChasing then
+			Stats.ChasesStarted = Stats.ChasesStarted + 1
+			isChasing = true
 		end
-		pathfindTo(targetTorso.Position) -- Uses pathfinding to chase the player.
-		lastWanderTime = tick() -- Resets wander timer to prevent wandering while chasing.
+		-- Use pathfinding to the target's current position.
+		pathfindTo(targetTorso.Position)
+		-- Reset wander timer so the zombie doesn't interrupt chase to wander.
+		lastWanderTime = tick()
 	else
-		isChasing = false -- Switches back to idle mode if no player is found.
-		if tick() - lastWanderTime > WANDER_INTERVAL then -- Checks if it’s time to wander again.
-			lastWanderTime = tick() -- Updates the last wander time.
-			Stats.TimesWandered = Stats.TimesWandered + 1 -- Increments wander counter for stats.
+		-- No target -> wander behavior
+		isChasing = false
+		if tick() - lastWanderTime > WANDER_INTERVAL then
+			lastWanderTime = tick()
+			Stats.TimesWandered = Stats.TimesWandered + 1
 
-			local angle = math.random() * 2 * math.pi -- Generates a random angle for circular wandering.
-			local x = WANDER_RADIUS * math.cos(angle) -- Calculates X offset for a random point within the radius.
-			local z = WANDER_RADIUS * math.sin(angle) -- Calculates Z offset for a random point.
-			
-			local wanderPosition = zombieTorso.Position + Vector3.new(x, 0, z) -- Creates a wander destination relative to the zombie’s position.
-			zombieHumanoid:MoveTo(wanderPosition) -- Moves the zombie to the random position.
+			-- Generate a random point in a circle around the current position using polar coordinates.
+			-- Polar coordinates produce an even distribution of points inside the circle.
+			local angle = math.random() * 2 * math.pi
+			local x = WANDER_RADIUS * math.cos(angle)
+			local z = WANDER_RADIUS * math.sin(angle)
+			local wanderPosition = zombieTorso.Position + Vector3.new(x, 0, z)
+			zombieHumanoid:MoveTo(wanderPosition)
 		end
 	end
 end
+
