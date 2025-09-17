@@ -1,5 +1,3 @@
-
-
 -- Services
 local PathfindingService = game:GetService("PathfindingService") 
 local RepStorage = game:GetService("ReplicatedStorage") 
