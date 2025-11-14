@@ -1,5 +1,5 @@
 -- creating a variable for pathfinding servicess
-local PathfindingService = game :GetService( "PathfindingService")
+local PathfindingService  =game:GetService("PathfindingService")
 
 --created a variable for replicated storage
 local RepStorage=game:GetService("ReplicatedStorage")
@@ -8,27 +8,27 @@ local RepStorage=game:GetService("ReplicatedStorage")
 local rng = Random.new()
 
 -- zombie type selection
-local ZOMBIE_TYPE ="Heavy"
+local zombie_Type="Heavy"
 
 -- each zombie type stats definition
-local ZombieTypes ={
+local ZombieTypes={
 
     -- heavy zombie stats
-	Heavy = {
+	Heavy={
         -- zombies health
 		Health =150,
         -- zombies walk speed
 		WalkSpeed = 5,
-        -- zombie's damage
+        -- zombis damage
 		Damage = 25,
-        -- zombie's attack cooldown
+        -- zombies attacking cooldown
 		AttackCooldown =1.5,
         -- zombie's displayed name
 		DisplayName = "Heavy Zombie",
         --zombie animations
-		AttackAnimId = "rbxassetid://AttackAnimation",
-		AttackSoundId = "rbxassetid://AttackSoundAnimation",
-		GroanSoundId = "rbxassetid://GroanSound",
+		AttackAnimId = "N/A", -- zombie attacking animation id here
+		AttackSoundId = "N/A", -- zombie attacking sound id here 
+		GroanSoundId = "N/a", -- zombie groaning sound should be here 
         -- zombie raged state 
 		RageThreshold =0.4 -- 40% health
 	},
@@ -40,14 +40,14 @@ local ZombieTypes ={
 		WalkSpeed = 16,
         -- zombie's damage
 		Damage = 6,
-        -- zombie attack cooldown
+        -- zombie attacking cooldown
 		AttackCooldown = 0.6,
         -- zombie displayed name
 		DisplayName = "Light Zombie",
         -- zombie animations
-		AttackAnimId = "rbxassetid://YOUR_ATTACK_ANIM_ID_HERE",
-		AttackSoundId = "rbxassetid://YOUR_ATTACK_SOUND_ID_HERE",
-		GroanSoundId = "rbxassetid://YOUR_GROAN_SOUND_ID_HERE",
+		AttackAnimId = "N/A", -- zombie attacking animation id here
+		AttackSoundId = "N/A", -- zombie attacking sound id here
+		GroanSoundId = "N/a", -- zombie groaning sound should be here
         -- zombie raged state
 		RageThreshold = 0.5 -- when reaching 50% health 
 	},
@@ -59,14 +59,14 @@ local ZombieTypes ={
 		WalkSpeed = 10,
         -- zombie damage
 		Damage = 10,
-        -- zombie attack cooldown
+        -- zombie attacking cooldown
 		AttackCooldown = 1.0,
         -- zombie displayed name
 		DisplayName = "Normal Zombie",
         -- zombie animations
-		AttackAnimId = "rbxassetid://YOUR_ATTACK_ANIM_ID_HERE",
-		AttackSoundId = "rbxassetid://YOUR_ATTACK_SOUND_ID_HERE",
-		GroanSoundId = "rbxassetid://YOUR_GROAN_SOUND_ID_HERE",
+		AttackAnimId = "N/A", -- zombie attacking animation id here
+		AttackSoundId = "N/A", -- zombie attacking sound id here
+		GroanSoundId = "N/a", -- zombie groaning sound should be here
         -- zombie raged state
 		RageThreshold = 0.3 -- when reaching 30% health
 	}
@@ -75,11 +75,11 @@ local ZombieTypes ={
 --  3 spawn locations for zombies to spawn in (can be modified)
 local SPAWN_LOCATIONS ={
     -- first  location
-	Vector3.new(102.75, 2.5, 11.85),
+	Vector3.new (102.75 , 2.5 , 11.85),
     -- second location
-	Vector3.new(116.1, 2.5, -18.95),
+	Vector3.new (116.1, 2.5 , -18.95) ,
     -- Third location
-	Vector3.new(88.55, 2.5, -24.1)
+	Vector3.new (88.55 , 2.5 , -24.1)
 }
 
 -- getting the stats for the selected zombie type
@@ -115,16 +115,16 @@ end
 
 -- main zombie script starts here!!
 -- getts the zombie model
-local zombie = script.Parent
+local zombie = script.Parent 
 -- gets the zombie torso or humanoid root part
-local zombieTorso = zombie:FindFirstChild("Torso") or zombie:FindFirstChild("UpperTorso") or zombie:FindFirstChild("HumanoidRootPart")
+local zombieTorso = zombie : FindFirstChild ( "Torso") or zombie : FindFirstChild("UpperTorso") or zombie : FindFirstChild ("HumanoidRootPart") 
 -- gets the zombie humanoid
-local zombieHumanoid = zombie:FindFirstChild("Humanoid")
-
--- checking if the zombie has the necessary parts
-if not zombieTorso or not zombieHumanoid then
+local zombieHumanoid = zombie : FindFirstChild ( "Humanoid") 
+ 
+-- checking if the zombie doesnt hacve zombie torso or zombie humanoid parts
+if not zombieTorso or not zombieHumanoid then 
     -- if not then warning message
-	warn("Zombie is missing parts (torso/humanoid), can't run AI.")
+	warn("Zombie is missing parts (torso/humanoid), can't run AI.") 
 	return
 end
 
@@ -196,66 +196,66 @@ local function findTarget()
 	rayParams.FilterDescendantsInstances = {zombie}
 
     -- loops through all players in the game
-	for _, player in ipairs(game.Players:GetPlayers()) do
-        -- checks if the player has a character
-		if player.Character then
-            -- gets the humanoid and torso of this Player
-			local human = player.Character:FindFirstChild("Humanoid")
+	for _ , player in ipairs (game.Players  : GetPlayers() ) do 
+        -- checks if the player has a characterr
+		if player.Character then 
+            -- gets the humanoid and torso of this player 
+			local human = player.Character : FindFirstChild ("Humanoid") 
             -- gets the torso or upper torso or humanoid root part of this player
-			local torso = player.Character:FindFirstChild("Torso") or player.Character:FindFirstChild("UpperTorso") or player.Character:FindFirstChild("HumanoidRootPart")
-			-- checks if the humanoid and torso exist and if the player is alive
-            if human and torso and human.Health > 0 then
-                -- calculates the distance between the zombie and the player
-				local distance = (zombieTorso.Position - torso.Position).Magnitude
-                -- checks if the distance is less than the current agro distance
-				if distance < agroDistance then
+			local torso = player.Character : FindFirstChild ("Torso") or player.Character : FindFirstChild ("UpperTorso")or player.Character : FindFirstChild ("HumanoidRootPart")
+			-- checks if the humanoid and torso exist and if the player is alive 
+            if human and torso and human.Health > 0 then 
+                -- calculates the distance between the zombie and the player 
+				local distance = (zombieTorso.Position - torso.Position).Magnitude 
+                -- checks if the distance is less than the current agro distance 
+				if distance < agroDistance then 
                     -- performs a raycast to check for line of sight
-					local origin = zombieTorso.Position
-                    -- calculates the direction for the raycast
-					local direction = (torso.Position - origin).Unit * distance
-                    -- performs the raycast
-					local result = workspace:Raycast(origin, direction, rayParams)
-                    -- checks if there is no obstruction or if the obstruction is part of the player's character model
-					if not result or result.Instance:IsDescendantOf(player.Character) then
-                        -- updates the agro distance and target to this player
-						agroDistance = distance
-                        -- sets the target to this player's torso
-						target = torso
+					local origin = zombieTorso.Position 
+                    -- calculates the direction for the raycast 
+					local direction = (torso.Position - origin).Unit * distance 
+                    -- performs the raycast 
+					local result = workspace:Raycast(origin, direction, rayParams) 
+                    -- checks if there is no obstruction or if the obstruction is part of the player's character model 
+					if not result or result.Instance:IsDescendantOf(player.Character) then 
+                        -- updates the agro distance and target to this player 
+						agroDistance = distance 
+                        -- sets the target to this player's torso 
+						target = torso 
 					end
 				end
 			end
 		end
 	end
-    --  returns the target found which is the closest player (or nil if none found)
-	return target
+    --  returns the target found which is the closest player (or nil if no player was  found)
+	return target 
 end
 
 
 -- set the zombie's damage from the current stats
-local DAMAGE_AMOUNT = currentStats.Damage
+local DAMAGE_AMOUNT= currentStats.Damage 
 -- same thing for attack cooldown
-local ATTACK_COOLDOWN = currentStats.AttackCooldown
+local ATTACK_COOLDOWN = currentStats.AttackCooldown 
 -- variable to track last attack time
-local lastAttackTime = 0
+local lastAttackTime = 0 
 
 -- function that handles when the zombie touches a player to deal damage 
-local function onTouched(hit)
+local function onTouched (hit) 
     -- gets the character from the hit part
-	local character = hit.Parent
+	local character = hit.Parent 
     -- gets the humanoid from the character
-	local humanoid = character:FindFirstChild("Humanoid")
+	local humanoid = character:FindFirstChild("Humanoid") 
     -- checks if the humanoid exists and if the character belongs to a player
-	if humanoid and game.Players:GetPlayerFromCharacter(character) then
+	if humanoid and game.Players:GetPlayerFromCharacter(character) then 
         -- gets the current time
-		local currentTime = tick()
+		local currentTime = tick() 
         -- checks if enough time has passed since the last attack
-		if currentTime - lastAttackTime >= ATTACK_COOLDOWN then
+		if currentTime - lastAttackTime >= ATTACK_COOLDOWN then 
             -- updates the last attack time
-			lastAttackTime = currentTime
+			lastAttackTime = currentTime 
             -- plays the attack animation and sound if they exist
-			if attackTrack and attackSound then
-				attackTrack:Play()
-				attackSound:Play()
+			if attackTrack and attackSound then 
+				attackTrack:Play() 
+				attackSound:Play() 
 			end
             -- creates a variable for health before taking damage
 			local healthBefore = humanoid.Health
@@ -284,40 +284,39 @@ zombieHumanoid.Died:Connect(function()
 	Stats.Deaths = Stats.Deaths + 1
 	-- calculates the time the zombie was alive
 	Stats.TimeAlive = tick() - spawnTime
-	-- prints the zombie's stats to the output
-	print("--- Zombie Stats ---")
+	-- prints the zombie stats to the output
+	print(" .. zombie Statss ..")
 	-- formats the time alive to 2 decimal places
-	print("Time Alive: " .. string.format("%.2f", Stats.TimeAlive) .. "s")
+	print("Time alivee : " .. string.format("%.2f", Stats.TimeAlive) .. "s")
 	-- prints the number of deaths
-	print("Kills: " .. Stats.Kills)
+	print("kills : " .. Stats.Kills)
 	-- prints the number of hits landed
-	print("Hits: " .. Stats.HitsLanded)
+	print("hit : " .. Stats.HitsLanded)
 	-- prints the total damage dealt
-	print("Damage: " .. Stats.DamageDealt)
+	print("damage : " .. Stats.DamageDealt)
 	-- prints the number of chases started
-	print("Chases: " .. Stats.ChasesStarted)
+	print("chases : " .. Stats.ChasesStarted)
 	-- prints the number of times wandered
-	print("Wanders: " .. Stats.TimesWandered)
-	print("--------------------")
-	-- waits for 5 seconds before respawning
-	task.wait(5)
+	print(" wanders : " .. Stats.TimesWandered)
+	print("---------------------------")
+	task.wait(5) -- a 5 second delay before respawning zombie
 	-- creates a new zombie by cloning the template
-	local newZombie = zombieTemplate:Clone()
+	local newZombie=zombieTemplate : Clone()
 	-- positions the new zombie at a random spawn location
-	local newTorso = newZombie:FindFirstChild("Torso") or newZombie:FindFirstChild("UpperTorso") or newZombie:FindFirstChild("HumanoidRootPart")
+	local newTorso=newZombie : FindFirstChild("Torso")or newZombie : FindFirstChild ("UpperTorso") or newZombie : FindFirstChild ("HumanoidRootPart")
 	-- checks if the new torso exists
-	if newTorso then
+	if newTorso then 
 		-- selects a random spawn location from the predefined list
-		local randomIndex = rng:NextInteger(1, #SPAWN_LOCATIONS)
+		local randomIndex = rng : NextInteger (1, #SPAWN_LOCATIONS) 
 		-- sets the new zombieies position to the random spawn loc
-		local randomSpawnPosition = SPAWN_LOCATIONS[randomIndex]
+		local randomSpawnPosition = SPAWN_LOCATIONS[randomIndex] 
 		-- sets the CFrame of the new zombie torso to the random spawn position
-		newTorso.CFrame = CFrame.new(randomSpawnPosition)
+		newTorso.CFrame = CFrame.new (randomSpawnPosition) 
 	end
 	-- parents the new zombie to the workspace and to make it appear in the game 
-	newZombie.Parent = workspace
+	newZombie.Parent = workspace 
 	-- destroys the old zombie dead body
-	zombie:Destroy()
+	zombie:Destroy() 
 end)
 
 -- function to handle pathfinding to a destination
